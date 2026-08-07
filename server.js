@@ -37,7 +37,7 @@ function saveOrder(order) {
 
 // Fixed product price is decided on the SERVER, not trusted from the browser —
 // this is what stops someone tampering with the price in dev tools.
-const PRODUCT_PRICE_INR = 199;
+const PRODUCT_PRICE_INR = 1;
 
 // 1. Create a Razorpay order (called before opening the Razorpay checkout popup)
 app.post('/create-order', async (req, res) => {
