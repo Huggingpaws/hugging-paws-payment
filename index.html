@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -213,6 +214,37 @@
     width:100%; text-align:center; border:none;
     cursor:pointer; margin-top:6px;
   }
+  .qty-stepper{
+    display:flex; align-items:center; gap:0;
+    width:fit-content;
+    border:1.5px solid var(--line);
+    border-radius:10px;
+    overflow:hidden;
+  }
+  .qty-btn{
+    width:42px; height:42px;
+    border:none;
+    background:var(--ivory-soft);
+    color:var(--espresso);
+    font-size:1.3rem;
+    cursor:pointer;
+    line-height:1;
+  }
+  .qty-btn:hover{ background:rgba(212,169,74,0.18); }
+  .qty-stepper input{
+    width:52px; text-align:center;
+    border:none; border-left:1.5px solid var(--line); border-right:1.5px solid var(--line);
+    height:42px;
+    font-family:'Manrope', sans-serif;
+    font-size:1rem; font-weight:700;
+    color:var(--espresso);
+    -moz-appearance:textfield;
+  }
+  .qty-stepper input::-webkit-outer-spin-button,
+  .qty-stepper input::-webkit-inner-spin-button{
+    -webkit-appearance:none; margin:0;
+  }
+
   .order-summary{
     background:var(--ivory-soft);
     border:1px solid var(--line);
@@ -675,6 +707,33 @@
     display:flex; align-items:baseline; justify-content:center; gap:14px; margin-bottom:34px;
   }
 
+  /* ---------- Customer Feedback ---------- */
+  .feedback{
+    background:var(--ivory-soft);
+    padding:64px 0;
+    text-align:center;
+    border-top:1px solid var(--line);
+  }
+  .feedback h2{ font-size:1.9rem; margin-bottom:10px; }
+  .feedback p{ color:var(--umber-soft); max-width:520px; margin:0 auto 20px; }
+  .feedback-email{
+    display:inline-flex; align-items:center; gap:10px;
+    font-family:'Manrope', sans-serif;
+    font-weight:700;
+    font-size:1.05rem;
+    color:var(--espresso);
+    background:var(--ivory);
+    border:1.5px solid var(--line);
+    border-radius:10px;
+    padding:14px 24px;
+    transition:all 0.3s ease;
+  }
+  .feedback-email:hover{
+    border-color:var(--gold);
+    background:rgba(212,169,74,0.08);
+  }
+  .feedback-email svg{ width:20px; height:20px; flex-shrink:0; }
+
   /* ---------- Footer ---------- */
   footer{
     background:var(--espresso-deep);
@@ -730,6 +789,7 @@
   }
 </style>
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 </head>
 <body>
 
@@ -948,6 +1008,19 @@
     </div>
   </section>
 
+  <!-- CUSTOMER FEEDBACK -->
+  <section class="feedback" id="feedback">
+    <div class="wrap">
+      <div class="eyebrow" style="justify-content:center;">We'd Love To Hear From You</div>
+      <h2>Customer Feedback</h2>
+      <p>Loved the results, or have a suggestion for us? Write to us anytime — we read every message.</p>
+      <a class="feedback-email" href="mailto:care.huggingpaws@gmail.com?subject=Feedback%20on%20Velvet-Coat%20Elixir">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
+        care.huggingpaws@gmail.com
+      </a>
+    </div>
+  </section>
+
   <!-- FINAL CTA -->
   <section class="final-cta" id="buy">
     <div class="final-bg"></div>
@@ -991,6 +1064,14 @@
         <p class="modal-sub">Velvet-Coat Elixir, 200ml — <strong>₹199</strong></p>
         <form id="detailsForm">
           <div class="field">
+            <label for="custQty">Quantity</label>
+            <div class="qty-stepper">
+              <button type="button" class="qty-btn" id="qtyMinus" aria-label="Decrease quantity">−</button>
+              <input type="number" id="custQty" name="custQty" value="1" min="1" max="10" readonly>
+              <button type="button" class="qty-btn" id="qtyPlus" aria-label="Increase quantity">+</button>
+            </div>
+          </div>
+          <div class="field">
             <label for="custName">Full Name</label>
             <input type="text" id="custName" name="custName" placeholder="e.g. Priya Sharma" required>
           </div>
@@ -1018,6 +1099,7 @@
 
         <div class="order-summary">
           <div><span>Name</span><strong id="summaryName"></strong></div>
+          <div><span>Quantity</span><strong id="summaryQty"></strong></div>
           <div><span>Address</span><strong id="summaryAddress"></strong></div>
           <div><span>Phone</span><strong id="summaryPhone"></strong></div>
         </div>
@@ -1131,6 +1213,87 @@
   const PRODUCT_PRICE = 199;
   const COD_FEE = 0; // adjust if you want to charge extra for Cash on Delivery
 
+  /* ===== Owner Order Notifications (Email + WhatsApp + Telegram) =====
+     Har naye order par teeno jagah alert bhejta hai — jo bhi setup ho wahi chalega,
+     baaki khud-ba-khud skip ho jaayenge (koi error nahi aayega).
+     SETUP ZARURI HAI (ek baar, jitne channel chahiye utne kar lo):
+
+     1) EMAIL (EmailJS - free, no backend needed):
+        a. https://www.emailjs.com par free account banao.
+        b. Email Service add karo (Gmail: care.huggingpaws@gmail.com) -> "Service ID" milega.
+        c. Email Template banao jisme fields ho: {{order_id}} {{customer_name}} {{customer_phone}}
+           {{customer_address}} {{customer_pincode}} {{quantity}} {{payment_method}} {{amount}}
+           aur "To Email" field me care.huggingpaws@gmail.com fix likh do -> "Template ID" milega.
+        d. Account > General me "Public Key" milegi.
+        e. Neeche EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, EMAILJS_PUBLIC_KEY fill karo.
+
+     2) WHATSAPP (CallMeBot - free, personal use):
+        a. Apne WhatsApp (9815833881) se CallMeBot ka number +34 644 59 71 67 contact me add karo.
+        b. Us number par WhatsApp text bhejo: "I allow callmebot to send me messages"
+        c. Reply me ek "apikey" milegi, wo neeche CALLMEBOT_APIKEY me daal do.
+
+     3) TELEGRAM (Bot API - free, sabse zyada reliable, phone number ki zaroorat nahi):
+        a. Telegram par "@BotFather" ko message karo -> /newbot -> naam do -> ek "Bot Token" milega,
+           wo neeche TELEGRAM_BOT_TOKEN me daal do.
+        b. Apne banaye hue bot ko Telegram par dhoondh kar usse "/start" bhejo (ek baar).
+        c. Phir browser me ye link kholo (TOKEN apni jagah daal kar):
+           https://api.telegram.org/bot<TOKEN>/getUpdates
+           Usme "chat":{"id": ...} milega, wahi number neeche TELEGRAM_CHAT_ID me daal do.
+        Ye sabse stable channel hai (CallMeBot/WhatsApp kabhi-kabhi rate-limit/down ho jaata hai),
+        isliye is skill ko zaroor setup karo — baaki do optional bonus ki tarah rahenge.
+  */
+  const EMAILJS_SERVICE_ID  = 'service_lgqc9c8';
+  const EMAILJS_TEMPLATE_ID = 'template_piytb2v';
+  const EMAILJS_PUBLIC_KEY  = 'wqIlc8-rtRX4gJKVm';
+  const OWNER_EMAIL = 'care.huggingpaws@gmail.com';
+
+  const OWNER_WHATSAPP_NUMBER = '919815833881'; // country code + number, no + or spaces
+  const CALLMEBOT_APIKEY = 'YOUR_CALLMEBOT_APIKEY';
+
+  const TELEGRAM_BOT_TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN';
+  const TELEGRAM_CHAT_ID   = 'YOUR_TELEGRAM_CHAT_ID';
+
+  if (window.emailjs && EMAILJS_PUBLIC_KEY !== 'YOUR_EMAILJS_PUBLIC_KEY') {
+    emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+  }
+
+  function notifyOwnerOfOrder(orderId, paymentLabel, total){
+    const order = currentOrder || {};
+
+    // -- Email via EmailJS --
+    if (window.emailjs && EMAILJS_SERVICE_ID !== 'YOUR_EMAILJS_SERVICE_ID') {
+      emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+        to_email: OWNER_EMAIL,
+        order_id: orderId,
+        customer_name: order.name || '',
+        customer_phone: order.phone || '',
+        customer_address: order.address || '',
+        customer_pincode: order.pincode || '',
+        quantity: order.quantity || 1,
+        payment_method: paymentLabel,
+        amount: '₹' + total
+      }).catch(function(err){ console.error('EmailJS order notify failed:', err); });
+    }
+
+    // -- WhatsApp via CallMeBot (fire-and-forget, no CORS issue via <img>) --
+    if (CALLMEBOT_APIKEY !== 'YOUR_CALLMEBOT_APIKEY') {
+      const msg = `New Order ${orderId}\nName: ${order.name || ''}\nPhone: ${order.phone || ''}\nQty: ${order.quantity || 1}\nAddress: ${order.address || ''}, ${order.pincode || ''}\nPayment: ${paymentLabel}\nAmount: ₹${total}`;
+      const url = `https://api.callmebot.com/whatsapp.php?phone=${OWNER_WHATSAPP_NUMBER}&text=${encodeURIComponent(msg)}&apikey=${CALLMEBOT_APIKEY}`;
+      const pixel = new Image();
+      pixel.src = url;
+    }
+
+    // -- Telegram (most reliable channel — no personal number/rate-limit issues) --
+    if (TELEGRAM_BOT_TOKEN !== 'YOUR_TELEGRAM_BOT_TOKEN' && TELEGRAM_CHAT_ID !== 'YOUR_TELEGRAM_CHAT_ID') {
+      const tgMsg = `🐾 New Order ${orderId}\nName: ${order.name || ''}\nPhone: ${order.phone || ''}\nQty: ${order.quantity || 1}\nAddress: ${order.address || ''}, ${order.pincode || ''}\nPayment: ${paymentLabel}\nAmount: ₹${total}`;
+      fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: tgMsg })
+      }).catch(function(err){ console.error('Telegram order notify failed:', err); });
+    }
+  }
+
   function openModal(){
     orderModal.classList.add('open');
     document.body.style.overflow = 'hidden';
@@ -1162,10 +1325,24 @@
     if(e.key === 'Escape' && orderModal.classList.contains('open')) closeModal();
   });
 
+  // Quantity stepper
+  const qtyInput = document.getElementById('custQty');
+  const qtyMinus = document.getElementById('qtyMinus');
+  const qtyPlus  = document.getElementById('qtyPlus');
+  qtyMinus.addEventListener('click', ()=>{
+    let v = parseInt(qtyInput.value, 10) || 1;
+    if(v > 1) qtyInput.value = v - 1;
+  });
+  qtyPlus.addEventListener('click', ()=>{
+    let v = parseInt(qtyInput.value, 10) || 1;
+    if(v < 10) qtyInput.value = v + 1;
+  });
+
   // Step 1: Details -> Step 2: Payment
   let currentOrder = {};
   detailsForm.addEventListener('submit', (e)=>{
     e.preventDefault();
+    const quantity = Math.min(10, Math.max(1, parseInt(qtyInput.value, 10) || 1));
     const name  = document.getElementById('custName').value.trim();
     const phone = document.getElementById('custPhone').value.trim();
     const address = document.getElementById('custAddress').value.trim();
@@ -1180,10 +1357,16 @@
       return;
     }
 
-    currentOrder = { name, phone, address, pincode };
+    currentOrder = { name, phone, address, pincode, quantity };
     document.getElementById('summaryName').textContent = name;
+    document.getElementById('summaryQty').textContent = quantity;
     document.getElementById('summaryAddress').textContent = `${address} — ${pincode}`;
     document.getElementById('summaryPhone').textContent = phone;
+
+    const selectedMethod = document.querySelector('input[name="payMethod"]:checked').value;
+    const total = PRODUCT_PRICE * quantity + (selectedMethod === 'cod' ? COD_FEE : 0);
+    payAmountEls.forEach(el => el.textContent = '₹' + total);
+
     showStep('payment');
   });
 
@@ -1226,7 +1409,8 @@
     try{
       const orderRes = await fetch(`${BACKEND_URL}/create-order`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quantity: currentOrder.quantity || 1 })
       });
       if(!orderRes.ok) throw new Error('order creation failed');
       const orderData = await orderRes.json();
@@ -1304,6 +1488,10 @@
     orderNameEl.textContent = currentOrder.name;
     orderAddrEl.textContent = `${currentOrder.address}, ${currentOrder.pincode}`;
     document.getElementById('thanksPaymentMethod').textContent = paymentLabel;
+
+    const total = PRODUCT_PRICE * (currentOrder.quantity || 1) + (currentOrder.payment === 'cod' ? COD_FEE : 0);
+    notifyOwnerOfOrder(orderId, paymentLabel, total);
+
     paymentForm.reset();
     showStep('thanks');
   }
@@ -1320,7 +1508,7 @@
   // Update displayed price on payment step based on method chosen
   document.querySelectorAll('input[name="payMethod"]').forEach(radio=>{
     radio.addEventListener('change', ()=>{
-      const total = PRODUCT_PRICE + (radio.value === 'cod' ? COD_FEE : 0);
+      const total = PRODUCT_PRICE * (currentOrder.quantity || 1) + (radio.value === 'cod' ? COD_FEE : 0);
       payAmountEls.forEach(el => el.textContent = '₹' + total);
     });
   });
