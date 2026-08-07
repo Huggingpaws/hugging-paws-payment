@@ -1,0 +1,14 @@
+{
+  "name": "hugging-paws-backend",
+  "version": "1.0.0",
+  "description": "Minimal backend for Razorpay order creation + payment verification",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "razorpay": "^2.9.4"
+  }
+}
