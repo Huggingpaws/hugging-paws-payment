@@ -35,17 +35,61 @@ function saveOrder(order) {
   fs.writeFileSync(ORDERS_FILE, JSON.stringify(orders, null, 2));
 }
 
-// Fixed product price is decided on the SERVER, not trusted from the browser —
-// this is what stops someone tampering with the price in dev tools.
-const PRODUCT_PRICE_INR = 199;
+// ===== Pricing (decided on the SERVER, never trusted from the browser) =====
+// This mirrors the pricing shown on the site (index.html) exactly, so the
+// amount charged always matches what the customer saw on screen.
+const UNIT_PRICE = 199;   // 1 bottle
+const PAIR_PRICE = 299;   // every 2 bottles
+const SHIPPING_FEE = 200;
+const SHIPPING_MIN_QTY = 10;
+
+// Coupons — kept here too (not trusted from the browser) so a tampered
+// "coupon" value in the request can't grant a discount it shouldn't.
+const COUPONS = {
+  BULK10: { pct: 20, minQty: 10 }, // 10+ bottles -> 20% off
+  BULK20: { pct: 30, minQty: 20 }, // 20+ bottles -> 30% off
+};
+
+function clampQty(q) {
+  q = parseInt(q, 10);
+  if (!Number.isFinite(q) || q < 1) return 1;
+  if (q > 50) return 50;
+  return q;
+}
+
+function itemsTotal(q) {
+  return Math.floor(q / 2) * PAIR_PRICE + (q % 2) * UNIT_PRICE;
+}
+
+function discountFor(q, couponCode) {
+  const coupon = COUPONS[String(couponCode || '').toUpperCase()];
+  if (!coupon || q < coupon.minQty) return 0;
+  return Math.round(itemsTotal(q) * coupon.pct / 100);
+}
+
+function shippingFor(q) {
+  return q >= SHIPPING_MIN_QTY ? SHIPPING_FEE : 0;
+}
+
+// Total for a PREPAID (online) order — COD fee is handled separately by the
+// /cod-order route below and never goes through Razorpay.
+function calcTotal(q, couponCode) {
+  return itemsTotal(q) - discountFor(q, couponCode) + shippingFor(q);
+}
 
 // 1. Create a Razorpay order (called before opening the Razorpay checkout popup)
 app.post('/create-order', async (req, res) => {
   try {
+    const quantity = clampQty(req.body.quantity);
+    const couponCode = req.body.coupon || '';
+
+    const total = calcTotal(quantity, couponCode);
+
     const options = {
-      amount: PRODUCT_PRICE_INR * 100, // amount in paise
+      amount: total * 100, // amount in paise
       currency: 'INR',
       receipt: 'receipt_' + Date.now(),
+      notes: { quantity: String(quantity), coupon: couponCode || 'none' },
     };
     const order = await razorpay.orders.create(options);
     res.json({
